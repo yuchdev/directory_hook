@@ -14,7 +14,11 @@ add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
 endif()
 
 file(GLOB SOURCE *.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../include/${TARGET}/*.h)
+
 set(QT_LIBRARIES Qt5::Widgets Qt5::Core)
+
+LIST(APPEND CMAKE_PROGRAM_PATH  "C:/Qt/5.6.3/x86/msvc2010/bin;C:/Qt/5.6.3/x86/msvc2010/plugins/platforms")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 add_executable(${TARGET} WIN32 ${SOURCE})
 target_link_libraries(${TARGET} ${QT_LIBRARIES})
