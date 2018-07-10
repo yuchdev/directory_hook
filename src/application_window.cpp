@@ -33,8 +33,6 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
     eventsList_(),
     filesystemHook_(new QFileSystemWatcher(parent))
 {
-    connect(filesystemHook_.data(), &QFileSystemWatcher::fileChanged, this, &DirHookApplicationWindow::changedFile);
-
     QVBoxLayout* setHookLayout = new QVBoxLayout;
 
     // 1 row - add path
@@ -71,6 +69,9 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
 
     // 4 row - events list
     eventsList_ = new QListWidget;
+
+    // Hook
+    connect(filesystemHook_.data(), &QFileSystemWatcher::fileChanged, this, &DirHookApplicationWindow::changedFile);
 
     // Setting layout
     setHookLayout->addLayout(addPath);
@@ -111,6 +112,7 @@ int DirHookApplicationWindow::getLastError()
 
 void DirHookApplicationWindow::addPathUnderWatch(const QString& pathToAdd)
 {
+    std::string DEBUG_pathToAdd = pathToAdd.toStdString();
     if(!filesystemHook_->addPath(pathToAdd)){
         eventsList_->addItem(QString("Unable to put the directory %1 under watch").arg(pathToAdd));
         eventsList_->addItem(QString("System Error Code = %1").arg(this->getLastError()));
@@ -118,6 +120,13 @@ void DirHookApplicationWindow::addPathUnderWatch(const QString& pathToAdd)
     else{
         eventsList_->addItem(QString("The directory %1 is put under watch").arg(pathToAdd));
     }
+    QStringList checkDirs = filesystemHook_->directories();
+    eventsList_->addItem(QString("Current directories list:").arg(pathToAdd));
+    QListIterator<QString> iterItems(checkDirs);
+    while(iterItems.hasNext()) {
+        eventsList_->addItem(iterItems.next());
+    }
+
 }
 
 void DirHookApplicationWindow::removePathFromWatch(const QString& pathToRemove)
