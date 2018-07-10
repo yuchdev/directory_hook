@@ -23,7 +23,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 add_executable(${TARGET} WIN32 ${SOURCE})
 target_link_libraries(${TARGET} ${QT_LIBRARIES})
 
-message("Platforms: " ${CMAKE_PREFIX_PATH}/plugins/platforms)
-message("CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR}/bin/Debug)
+# Workaround for latest Qt compatible with VirtualBox
+if (Qt5Widgets_VERSION VERSION_EQUAL 5.6.3)
+    add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND rmdir \"${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIGURATION>/platforms\")
 
-#execute_process(COMMAND mklink /J \"${CMAKE_PREFIX_PATH}/plugins/platforms\" \"${CMAKE_CURRENT_BINARY_DIR}/bin/Debug\")
+    add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND mklink /D 
+        \"${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIGURATION>/platforms\" 
+        \"${CMAKE_PREFIX_PATH}/plugins/platforms\")
+endif()
+
