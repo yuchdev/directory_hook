@@ -20,9 +20,9 @@ public:
 
     /// @brief default
     virtual ~DirHookApplicationWindow();
-    
+
 private:
-    
+
     /// @brief
     static QString getDirectoryName();
 
@@ -37,21 +37,23 @@ private:
 
 private slots:
     void selectHookPath();
-	void addHookPath();
+    void addHookPath();
     void removeHookPath();
-	void selectDestinationPath();
-	void selectCopyChangedFiles();
-    
+    void selectDestinationPath();
+    void selectCopyChangedFiles();
+    void changedFile(const QString& path);
+
 private:
-    
+
+    bool copyChanged_;
     QPushButton* lookupPathButton_;
     QPushButton* addPathButton_;
     QPushButton* removePathButton_;
     QPushButton* copyToDirButton_;
-	QLineEdit* addPathEdit_;
-	QLineEdit* copyToDirEdit_;
-	QCheckBox* copyToDirChck_;
-	QListWidget* pathsList_;
-	QListWidget* eventsList_;
-	QScopedPointer<QFileSystemWatcher> filesystemHook_;
+    QLineEdit* addPathEdit_;
+    QLineEdit* copyToDirEdit_;
+    QCheckBox* copyToDirChck_;
+    QListWidget* pathsList_;
+    QListWidget* eventsList_;
+    QScopedPointer<QFileSystemWatcher> filesystemHook_;
 };
