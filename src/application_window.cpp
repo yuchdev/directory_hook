@@ -6,10 +6,11 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QFileDialog>
 #include <QListWidget>
-#include <QFileSystemWatcher>
 #include <QTableWidgetItem>
+#include <QFileSystemWatcher>
 #include <QListIterator>
 
 #if defined(Q_OS_WIN)
@@ -20,7 +21,7 @@
 
 #include <cassert>
 
-DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/) : 
+FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent/* = nullptr*/) : 
     QWidget(parent),
     copyChanged_(false),
     copyToDirButton_(),
@@ -35,6 +36,20 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
 {
     QVBoxLayout* setHookLayout = new QVBoxLayout;
 
+    // 0 row - select type to monitor
+    QHBoxLayout* fileType = new QHBoxLayout;
+    QLabel* fileTypeLbl = new QLabel("Filesystem object type: ");
+    filesystemObjType_ = new QComboBox;
+    QStringList filesystemTypes;
+    filesystemTypes << "File" << "Directory";
+    filesystemObjType_->addItems(filesystemTypes);
+    filesystemObjType_->setCurrentIndex(DirFSType);
+    assert(filesystemObjType_->count() == FSTypeCount);
+
+    fileType->addWidget(fileTypeLbl);
+    fileType->addWidget(filesystemObjType_);
+    
+
     // 1 row - add path
     QHBoxLayout* addPath = new QHBoxLayout;
     QLabel* addPathLbl = new QLabel("Add path: ");
@@ -47,9 +62,9 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
     addPath->addWidget(lookupPathButton_);
     addPath->addWidget(addPathButton_);
     addPath->addWidget(removePathButton_);
-    connect(lookupPathButton_, &QPushButton::clicked, this, &DirHookApplicationWindow::selectHookPath);
-    connect(addPathButton_, &QPushButton::clicked, this, &DirHookApplicationWindow::addHookPath);
-    connect(removePathButton_, &QPushButton::clicked, this, &DirHookApplicationWindow::removeHookPath);
+    connect(lookupPathButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::selectHookPath);
+    connect(addPathButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::addHookPath);
+    connect(removePathButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::removeHookPath);
 
     // 2 row - paths list
     pathsList_ = new QListWidget;
@@ -63,17 +78,19 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
     copyToDir->addWidget(copyToDirEdit_);
     copyToDir->addWidget(copyToDirButton_);
     copyToDirChck_->setChecked(false);
-    connect(copyToDirButton_, &QPushButton::clicked, this, &DirHookApplicationWindow::selectDestinationPath);
-    connect(copyToDirChck_, &QCheckBox::clicked, this, &DirHookApplicationWindow::selectCopyChangedFiles);
+    connect(copyToDirButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::selectDestinationPath);
+    connect(copyToDirChck_, &QCheckBox::clicked, this, &FilesystemHookApplicationWindow::selectCopyChangedFiles);
     selectCopyChangedFiles();
 
     // 4 row - events list
     eventsList_ = new QListWidget;
 
     // Hook
-    connect(filesystemHook_.data(), &QFileSystemWatcher::fileChanged, this, &DirHookApplicationWindow::changedFile);
+    connect(filesystemHook_.data(), &QFileSystemWatcher::fileChanged, this, &FilesystemHookApplicationWindow::fileChanged);
+    connect(filesystemHook_.data(), &QFileSystemWatcher::directoryChanged, this, &FilesystemHookApplicationWindow::directoryChanged);
 
     // Setting layout
+    setHookLayout->addLayout(fileType);
     setHookLayout->addLayout(addPath);
     setHookLayout->addWidget(pathsList_);
     setHookLayout->addLayout(copyToDir);
@@ -81,17 +98,22 @@ DirHookApplicationWindow::DirHookApplicationWindow(QWidget* parent/* = nullptr*/
     this->setLayout(setHookLayout);
 }
 
-DirHookApplicationWindow::~DirHookApplicationWindow()
+FilesystemHookApplicationWindow::~FilesystemHookApplicationWindow()
 {
 }
 
-// static
-QString DirHookApplicationWindow::getDirectoryName()
+QString FilesystemHookApplicationWindow::getDirectoryName(int fileType)
 {
     QFileDialog openDir;
     openDir.setDirectory(QDir::homePath());
-    openDir.setFileMode(QFileDialog::Directory);
-    openDir.setOptions(QFileDialog::ShowDirsOnly);
+    if(fileType == FileFSType) {
+        openDir.setFileMode(QFileDialog::ExistingFile);
+    }
+    else if (fileType == DirFSType) {
+        openDir.setOptions(QFileDialog::ShowDirsOnly);
+        openDir.setFileMode(QFileDialog::Directory);
+    }
+    
     QStringList fileName;
     if (openDir.exec()) {
         fileName = openDir.selectedFiles();
@@ -101,7 +123,7 @@ QString DirHookApplicationWindow::getDirectoryName()
 }
 
 // static
-int DirHookApplicationWindow::getLastError()
+int FilesystemHookApplicationWindow::getLastError()
 {
 #if defined(Q_OS_WIN)
     return ::GetLastError();
@@ -110,54 +132,52 @@ int DirHookApplicationWindow::getLastError()
 #endif
 }
 
-void DirHookApplicationWindow::addPathUnderWatch(const QString& pathToAdd)
+void FilesystemHookApplicationWindow::addPathUnderWatch(const QString& pathToAdd, const QString& fileType)
 {
-    std::string DEBUG_pathToAdd = pathToAdd.toStdString();
     if(!filesystemHook_->addPath(pathToAdd)){
-        eventsList_->addItem(QString("Unable to put the directory %1 under watch").arg(pathToAdd));
+        eventsList_->addItem(QString("Unable to put the %1 %2 under watch").arg(fileType).arg(pathToAdd));
         eventsList_->addItem(QString("System Error Code = %1").arg(this->getLastError()));
     }
     else{
-        eventsList_->addItem(QString("The directory %1 is put under watch").arg(pathToAdd));
+        eventsList_->addItem(QString("The %1 %2 is put under watch").arg(fileType).arg(pathToAdd));
     }
-    QStringList checkDirs = filesystemHook_->directories();
-    eventsList_->addItem(QString("Current directories list:").arg(pathToAdd));
-    QListIterator<QString> iterItems(checkDirs);
-    while(iterItems.hasNext()) {
-        eventsList_->addItem(iterItems.next());
-    }
-
 }
 
-void DirHookApplicationWindow::removePathFromWatch(const QString& pathToRemove)
+void FilesystemHookApplicationWindow::removePathFromWatch(const QString& pathToRemove)
 {
     if(filesystemHook_->removePath(pathToRemove)){
-        eventsList_->addItem(QString("Unable to remove the directory %1 from watch").arg(pathToRemove));
+        eventsList_->addItem(QString("Unable to remove the file %1 from watch").arg(pathToRemove));
         eventsList_->addItem(QString("System Error Code = %1").arg(this->getLastError()));
     }
     else{
-        eventsList_->addItem(QString("The directory %1 is removed from watch").arg(pathToRemove));
+        eventsList_->addItem(QString("The file %1 is removed from watch").arg(pathToRemove));
     }
 }
 
-void DirHookApplicationWindow::selectHookPath()
+void FilesystemHookApplicationWindow::selectHookPath()
 {
-    addPathEdit_->setText(getDirectoryName());
+    addPathEdit_->setText(getDirectoryName(filesystemObjType_->currentIndex()));
 }
 
-void DirHookApplicationWindow::addHookPath()
+void FilesystemHookApplicationWindow::addHookPath()
 {
     QString hookPath = addPathEdit_->text();
-    if(QDir().exists(hookPath)){
+    QFileInfo hookFile(hookPath);
+    
+    if(hookFile.isFile()){
         pathsList_->addItem(hookPath);
-        addPathUnderWatch(hookPath);
+        addPathUnderWatch(hookPath, QString("file"));
+    }
+    else if(hookFile.isDir()){
+        pathsList_->addItem(hookPath);
+        addPathUnderWatch(hookPath, QString("directory"));
     }
     else{
-        eventsList_->addItem(QString("The directory %1 does not exist").arg(hookPath));
+        eventsList_->addItem(QString("The file %1 does not exist").arg(hookPath));
     }
 }
 
-void DirHookApplicationWindow::removeHookPath()
+void FilesystemHookApplicationWindow::removeHookPath()
 {
     QList<QListWidgetItem*> eraseUs = pathsList_->selectedItems();
     QListIterator<QListWidgetItem*> iterErasedItems(eraseUs);
@@ -167,19 +187,19 @@ void DirHookApplicationWindow::removeHookPath()
     }
 }
 
-void DirHookApplicationWindow::selectDestinationPath()
+void FilesystemHookApplicationWindow::selectDestinationPath()
 {
-    copyToDirEdit_->setText(getDirectoryName());
+    copyToDirEdit_->setText(getDirectoryName(DirFSType));
 }
 
-void DirHookApplicationWindow::selectCopyChangedFiles()
+void FilesystemHookApplicationWindow::selectCopyChangedFiles()
 {
     copyChanged_ = copyToDirChck_->isChecked();
     copyToDirEdit_->setEnabled(copyChanged_);
     copyToDirButton_->setEnabled(copyChanged_);
 }
 
-void DirHookApplicationWindow::changedFile(const QString& path)
+void FilesystemHookApplicationWindow::fileChanged(const QString& path)
 {
     if(copyChanged_){
         QFileInfo fileInfo(path);
@@ -190,5 +210,10 @@ void DirHookApplicationWindow::changedFile(const QString& path)
             .arg(fileName));
         QFile::copy(path, destinationFilePath);
     }
-    eventsList_->addItem(QString("Changed file %1 in the watched directory").arg(path));
+    eventsList_->addItem(QString("Changed file signal, path = %1 in the watched directory").arg(path));
+}
+
+void FilesystemHookApplicationWindow::directoryChanged(const QString& path)
+{
+    eventsList_->addItem(QString("Changed directory signal, path = %1 in the watched directory").arg(path));
 }

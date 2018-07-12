@@ -8,44 +8,67 @@ class QLineEdit;
 class QCheckBox;
 class QListWidget;
 class QFileSystemWatcher;
+class QComboBox;
 
-/// @brief 
-class DirHookApplicationWindow : public QWidget
+/// @brief Hook to directory or file
+class FilesystemHookApplicationWindow : public QWidget
 {
     Q_OBJECT
+
+    enum{
+        FileFSType,
+        DirFSType,
+        FSTypeCount
+    };
 public:
 
     /// @brief Create main window
-    DirHookApplicationWindow(QWidget* parent = nullptr);
+    FilesystemHookApplicationWindow(QWidget* parent = nullptr);
 
     /// @brief default
-    virtual ~DirHookApplicationWindow();
+    virtual ~FilesystemHookApplicationWindow();
 
 private:
 
-    /// @brief
-    static QString getDirectoryName();
-
-    /// @brief
+    /// Cross-platform LastError code
     static int getLastError();
 
-    /// @brief
-    void addPathUnderWatch(const QString& pathToAdd);
+    /// Get path o directory from QFileDialog
+    QString getDirectoryName(int fileType);
 
-    /// @brief
+    /// Add file or directory under watch
+    void addPathUnderWatch(const QString& pathToAdd, const QString& fileType);
+
+    /// Remove file or directory from watch
     void removePathFromWatch(const QString& pathToRemove);
 
 private slots:
+
+    /// Signal accepted when new path is selected
     void selectHookPath();
+
+    /// Signal accepted when new path is added
     void addHookPath();
+
+    /// Signal accepted when new path is removed
     void removeHookPath();
+
+    /// Signal accepted when selected directory where to copy changed file
     void selectDestinationPath();
+
+    /// Signal accepted when selected checkbox to copy changed file
     void selectCopyChangedFiles();
-    void changedFile(const QString& path);
+
+    /// Signal accepted when file under watch is changed
+    void fileChanged(const QString& path);
+
+    /// Signal accepted when directory under watch is changed
+    void directoryChanged(const QString& path);
 
 private:
 
     bool copyChanged_;
+    QComboBox* filesystemObjType_;
     QPushButton* lookupPathButton_;
     QPushButton* addPathButton_;
     QPushButton* removePathButton_;

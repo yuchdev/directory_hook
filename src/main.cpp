@@ -6,12 +6,12 @@ int main(int argc, char **argv)
 {
     setlocale(LC_ALL, "en-US");
 
-    QApplication::setApplicationName("Directory Changes Hook");
+    QApplication::setApplicationName("Filesystem Changes Hook");
     QApplication app(argc, argv);
 
-    DirHookApplicationWindow wnd;
-    static const int height = 300;
-    static const int goldenRatioWidth = 300*1.6;
+    FilesystemHookApplicationWindow wnd;
+    const int height = 300;
+    const int goldenRatioWidth = 300*1.6;
     wnd.setMinimumHeight(height);
     wnd.setMinimumWidth(goldenRatioWidth);
     wnd.show();
