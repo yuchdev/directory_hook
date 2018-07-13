@@ -25,7 +25,7 @@ target_link_libraries(${TARGET} ${QT_LIBRARIES})
 
 # Workaround for latest Qt compatible with VirtualBox
 if (Qt5Widgets_VERSION VERSION_EQUAL 5.6.3)
-    add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND rmdir \"${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIGURATION>/platforms\")
+    add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND rmdir /Q \"${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIGURATION>/platforms\")
 
     add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND mklink /D 
         \"${CMAKE_CURRENT_BINARY_DIR}/bin/$<CONFIGURATION>/platforms\" 

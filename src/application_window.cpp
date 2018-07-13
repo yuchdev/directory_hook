@@ -1,6 +1,7 @@
 #include <qt_directory_hook/application_window.h>
 
 #include <QDir>
+#include <QDirIterator>
 #include <QLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -12,6 +13,7 @@
 #include <QTableWidgetItem>
 #include <QFileSystemWatcher>
 #include <QListIterator>
+#include <QStringList>
 
 #if defined(Q_OS_WIN)
 #include <Windows.h>
@@ -24,9 +26,12 @@
 FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent/* = nullptr*/) : 
     QWidget(parent),
     copyChanged_(false),
-    copyToDirButton_(),
+    filesystemObjType_(),
     lookupPathButton_(),
     addPathButton_(),
+    removePathButton_(),
+    copyToDirButton_(),
+    wildcardEdit_(),
     addPathEdit_(),
     copyToDirEdit_(),
     copyToDirChck_(),
@@ -36,9 +41,10 @@ FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent
 {
     QVBoxLayout* setHookLayout = new QVBoxLayout;
 
-    // 0 row - select type to monitor
+    // 1 row - select type to monitor
     QHBoxLayout* fileType = new QHBoxLayout;
     QLabel* fileTypeLbl = new QLabel("Filesystem object type: ");
+    fileTypeLbl->setAlignment(Qt::AlignRight);
     filesystemObjType_ = new QComboBox;
     QStringList filesystemTypes;
     filesystemTypes << "File" << "Directory";
@@ -50,7 +56,7 @@ FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent
     fileType->addWidget(filesystemObjType_);
     
 
-    // 1 row - add path
+    // 2 row - add path
     QHBoxLayout* addPath = new QHBoxLayout;
     QLabel* addPathLbl = new QLabel("Add path: ");
     addPathEdit_ = new QLineEdit;
@@ -66,10 +72,10 @@ FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent
     connect(addPathButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::addHookPath);
     connect(removePathButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::removeHookPath);
 
-    // 2 row - paths list
+    // 3 row - paths list
     pathsList_ = new QListWidget;
 
-    // 3 row - copy to dir
+    // 4 row - copy to dir
     QHBoxLayout* copyToDir = new QHBoxLayout;
     copyToDirChck_ = new QCheckBox("Copy changed files to dir");
     copyToDirEdit_ = new QLineEdit;
@@ -81,8 +87,18 @@ FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent
     connect(copyToDirButton_, &QPushButton::clicked, this, &FilesystemHookApplicationWindow::selectDestinationPath);
     connect(copyToDirChck_, &QCheckBox::clicked, this, &FilesystemHookApplicationWindow::selectCopyChangedFiles);
     selectCopyChangedFiles();
+    
+    // 4 row - file wildcards
+    QHBoxLayout* wildcards = new QHBoxLayout;
+    QLabel* wildcardsLbl = new QLabel("Wildcards (separated with ';'):");
+    wildcardEdit_ = new QLineEdit;
+    wildcardEdit_->setText("*.sh");
+    wildcards->addWidget(wildcardsLbl);
+    wildcards->addWidget(wildcardEdit_);
+    connect(wildcardEdit_, &QLineEdit::textEdited, this, &FilesystemHookApplicationWindow::composeWildcardList);
+    composeWildcardList();
 
-    // 4 row - events list
+    // 6 row - events list
     eventsList_ = new QListWidget;
 
     // Hook
@@ -94,6 +110,7 @@ FilesystemHookApplicationWindow::FilesystemHookApplicationWindow(QWidget* parent
     setHookLayout->addLayout(addPath);
     setHookLayout->addWidget(pathsList_);
     setHookLayout->addLayout(copyToDir);
+    setHookLayout->addLayout(wildcards);
     setHookLayout->addWidget(eventsList_);
     this->setLayout(setHookLayout);
 }
@@ -154,6 +171,12 @@ void FilesystemHookApplicationWindow::removePathFromWatch(const QString& pathToR
     }
 }
 
+QStringList& FilesystemHookApplicationWindow::fileWildcards()
+{
+    static QStringList wildcards;
+    return wildcards;
+}
+
 void FilesystemHookApplicationWindow::selectHookPath()
 {
     addPathEdit_->setText(getDirectoryName(filesystemObjType_->currentIndex()));
@@ -203,11 +226,10 @@ void FilesystemHookApplicationWindow::fileChanged(const QString& path)
 {
     if(copyChanged_){
         QFileInfo fileInfo(path);
-        QString fileName(fileInfo.fileName());
         QString destinationFilePath = QDir::cleanPath(QString("%1%2%3")
             .arg(copyToDirEdit_->text())
             .arg(QDir::separator())
-            .arg(fileName));
+            .arg(fileInfo.fileName()));
         QFile::copy(path, destinationFilePath);
     }
     eventsList_->addItem(QString("Changed file signal, path = %1 in the watched directory").arg(path));
@@ -216,4 +238,23 @@ void FilesystemHookApplicationWindow::fileChanged(const QString& path)
 void FilesystemHookApplicationWindow::directoryChanged(const QString& path)
 {
     eventsList_->addItem(QString("Changed directory signal, path = %1 in the watched directory").arg(path));
+    if(copyChanged_){
+        QDirIterator it(path, fileWildcards(), QDir::Files);
+        while (it.hasNext()){
+            QFileInfo fileInfo(it.next());
+            QString destinationFilePath = QDir::cleanPath(QString("%1%2%3")
+                .arg(copyToDirEdit_->text())
+                .arg(QDir::separator())
+                .arg(fileInfo.fileName()));
+
+            QFile::copy(fileInfo.filePath(), destinationFilePath);
+            eventsList_->addItem(QString("Source path = %1; Destination path = %2").arg(fileInfo.filePath()).arg(destinationFilePath));
+        }
+    }
+}
+
+void FilesystemHookApplicationWindow::composeWildcardList()
+{
+    QStringList& wildcards = fileWildcards();
+    wildcards = wildcardEdit_->text().split(QChar(';'));
 }

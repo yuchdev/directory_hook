@@ -34,6 +34,7 @@ private:
     static int getLastError();
 
     /// Get path o directory from QFileDialog
+    /// param fileType: filesystem object type, file or directory
     QString getDirectoryName(int fileType);
 
     /// Add file or directory under watch
@@ -41,6 +42,9 @@ private:
 
     /// Remove file or directory from watch
     void removePathFromWatch(const QString& pathToRemove);
+
+    /// Get wildcards list
+    static QStringList& fileWildcards();
 
 private slots:
 
@@ -65,6 +69,9 @@ private slots:
     /// Signal accepted when directory under watch is changed
     void directoryChanged(const QString& path);
 
+    /// Make wildcards list
+    void composeWildcardList();
+
 private:
 
     bool copyChanged_;
@@ -73,6 +80,7 @@ private:
     QPushButton* addPathButton_;
     QPushButton* removePathButton_;
     QPushButton* copyToDirButton_;
+    QLineEdit* wildcardEdit_;
     QLineEdit* addPathEdit_;
     QLineEdit* copyToDirEdit_;
     QCheckBox* copyToDirChck_;

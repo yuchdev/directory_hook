@@ -10,8 +10,8 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
 
     FilesystemHookApplicationWindow wnd;
-    const int height = 300;
-    const int goldenRatioWidth = 300*1.6;
+    const int height = 500;
+    const int goldenRatioWidth = 500*1.6;
     wnd.setMinimumHeight(height);
     wnd.setMinimumWidth(goldenRatioWidth);
     wnd.show();
